@@ -1,0 +1,35 @@
+---
+# ansible/cli.yml
+# Playbook para configurar o host cliente 'cli'
+
+- name: Configurar host cliente (cli)
+  hosts: cli
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  roles:
+    - autofs_client # Role para cliente autofs
+  tasks:
+    - name: Instalar pacotes firefox-esr e xauth
+      ansible.builtin.apt:
+        name:
+          - firefox-esr
+          - xauth
+        state: present
+
+    - name: Ajustar sshd_config para permitir X11 forwarding
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?X11Forwarding'
+        line: 'X11Forwarding yes'
+        backup: yes
+      notify: Reiniciar sshd
+
+    - name: Ajustar sshd_config para X11DisplayOffset (se necessário)
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?X11DisplayOffset'
+        line: 'X11DisplayOffset 10'
+        backup: yes
+      notify: Reiniciar sshd

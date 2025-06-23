@@ -1,0 +1,4 @@
+# ansible/roles/autofs_client/templates/auto.nfs.j2
+# Arquivo de mapa para montagem NFS via autofs
+
+nfs_share -fstype=nfs,rw,hard,intr arq.{{ projeto_dominio }}:/dados/nfs

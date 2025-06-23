@@ -1,0 +1,13 @@
+---
+# ansible/app.yml
+# Playbook para configurar o servidor de aplicação 'app'
+
+- name: Configurar servidor de aplicação (app)
+  hosts: app
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  roles:
+    - apache
+    - autofs_client # Role para cliente autofs

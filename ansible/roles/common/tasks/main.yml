@@ -1,0 +1,99 @@
+---
+# ansible/roles/common/tasks/main.yml
+
+- name: Atualizar cache de pacotes apt
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Realizar upgrade completo do sistema
+  ansible.builtin.apt:
+    upgrade: dist
+    autoremove: yes
+
+- name: Instalar chrony (servidor NTP)
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Configurar chrony para pool.ntp.br
+  ansible.builtin.lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool ntp.ubuntu.com'
+    line: 'pool pool.ntp.br iburst'
+    backup: yes
+  notify: Reiniciar chrony
+
+- name: Ajustar a zona de tempo para America/Recife
+  ansible.builtin.timezone:
+    name: America/Recife
+
+- name: Criar o grupo 'ifpb'
+  ansible.builtin.group:
+    name: ifpb
+    state: present
+
+- name: Criar usuário jantony e adicionar ao grupo ifpb
+  ansible.builtin.user:
+    name: "jantony"
+    state: present
+    groups: ifpb
+    append: yes
+    shell: /bin/bash # Definir shell para que o usuário possa logar
+
+- name: Criar usuário jonatas e adicionar ao grupo ifpb
+  ansible.builtin.user:
+    name: "jonatas"
+    state: present
+    groups: ifpb
+    append: yes
+    shell: /bin/bash # Definir shell para que o usuário possa logar
+
+# --- Configuração do Servidor SSH ---
+- name: Instalar o openssh-server (se não estiver instalado)
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+
+- name: Copiar template de sshd_config personalizado
+  ansible.builtin.template:
+    src: ../../templates/sshd_config.j2 # Caminho relativo à pasta `ansible/roles/common/tasks`
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reiniciar sshd
+
+- name: Copiar mensagem de saudação SSH (motd)
+  ansible.builtin.copy:
+    src: ../../files/motd_ssh.txt # Caminho relativo à pasta `ansible/roles/common/tasks`
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Gerar e configurar chaves SSH para jantony
+  ansible.builtin.authorized_key:
+    user: "jantony"
+    state: present
+    key: "{{ lookup('file', '{{ ansible_user_dir }}/.ssh/id_rsa.pub') }}" # Assume que a chave já existe localmente no controlador Ansible
+    # Ou, se a chave precisa ser gerada na VM:
+    # key: "{{ lookup('pipe', 'ssh-keygen -b 2048 -t rsa -f /tmp/{{ nome_integrante_1 }}_id_rsa -q -N "" && cat /tmp/{{ nome_integrante_1 }}_id_rsa.pub') }}"
+
+- name: Gerar e configurar chaves SSH para jonatas
+  ansible.builtin.authorized_key:
+    user: "jonatas"
+    state: present
+    key: "{{ lookup('file', '{{ ansible_user_dir }}/.ssh/id_rsa.pub') }}" # Assume que a chave já existe localmente no controlador Ansible
+
+- name: Instalar cliente NFS (nfs-common)
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+
+- name: Permitir que usuários do grupo ifpb tenham acesso sudo sem senha
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/ifpb_sudo
+    line: '%ifpb ALL=(ALL) NOPASSWD: ALL'
+    create: yes
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'

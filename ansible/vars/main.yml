@@ -1,0 +1,19 @@
+---
+# ansible/vars/main.yml
+
+# Informações da equipe
+nome_integrante_1: "jantony" # Substitua pelo primeiro nome do Integrante 1
+nome_integrante_2: "jonatas" # Substitua pelo primeiro nome do Integrante 2
+matricula_integrante_1: "20232380024" # Substitua pela matrícula completa, XX é o final
+matricula_integrante_2: "20232380023" # Substitua pela matrícula completa, YY é o final
+
+# IPs para configurações de DHCP fixas
+# XY deve ser os últimos dígitos da matrícula de cada integrante (ex: 3 e 6 de 123 e 456 -> 36 ou 63)
+ip_db_final_yy: "192.168.56.123" # Ex: 'YY' dos últimos dois dígitos
+ip_app_final_xy: "192.168.56.134" # Ex: 'XY' dos últimos dígitos
+
+# Domínio do projeto
+projeto_dominio: "jantony.jonatas.devops"
+
+# Chaves SSH (assumindo que serão geradas ou copiadas via Ansible)
+# Para este projeto, vamos gerar as chaves via Ansible.
