@@ -122,6 +122,8 @@ Instalação dos pacotes firefox-esr e xauth.
 Ajuste do servidor SSH para permitir a exportação da interface dos aplicativos X11.
 Instalação e configuração do autofs para montagem automática do compartilhamento NFS /dados/nfs do servidor arq no diretório /var/nfs.
 Estrutura do Projeto
+
+
 .
 ├── Vagrantfile
 ├── ansible/
@@ -141,6 +143,9 @@ Estrutura do Projeto
 │   ├── files/
 │   └── templates/
 └── README.md
+
+
+--------------------------------
 
 Como Executar o Projeto
 Siga os passos abaixo para levantar e configurar o ambiente:
