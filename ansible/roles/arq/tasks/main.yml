@@ -1,0 +1,108 @@
+- name: Instalar DHCP e LVM
+  apt:
+    name:
+      - isc-dhcp-server
+      - lvm2
+    state: present
+
+- name: Configurar DHCP com domínio jantony.jonatas.devops
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+  notify: restart dhcp
+
+- name: Configurar endereço IP fixo
+  copy:
+    dest: /etc/netplan/01-netcfg.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          enp0s8:
+            dhcp4: no
+            addresses: [192.168.56.10/24]
+            gateway4: 192.168.56.1
+            nameservers:
+              addresses: [1.1.1.1, 8.8.8.8]
+  notify: apply netplan
+
+- name: Criar Volume Group dados com 3 discos
+  lvg:
+    vg: dados
+    pvs:
+      - /dev/sdb
+      - /dev/sdc
+      - /dev/sdd
+
+- name: Criar Logical Volume ifpb com 15G
+  lvol:
+    vg: dados
+    lv: ifpb
+    size: 15g
+
+- name: Formatar partição ifpb
+  filesystem:
+    fstype: ext4
+    dev: /dev/dados/ifpb
+
+- name: Criar ponto de montagem /dados
+  file:
+    path: /dados
+    state: directory
+
+- name: Montar LV ifpb em /dados
+  mount:
+    path: /dados
+    src: /dev/dados/ifpb
+    fstype: ext4
+    opts: defaults
+    state: mounted
+
+- name: Adicionar entrada ao fstab
+  mount:
+    path: /dados
+    src: /dev/dados/ifpb
+    fstype: ext4
+    opts: defaults
+    state: present
+
+# NFS CONFIG
+
+- name: Instalar NFS server
+  apt:
+    name: nfs-kernel-server
+    state: present
+
+- name: Criar diretório NFS compartilhado
+  file:
+    path: /dados/nfs
+    state: directory
+    owner: nfs-ifpb
+    group: nfs-ifpb
+    mode: '0770'
+
+- name: Criar usuário nfs-ifpb sem shell
+  user:
+    name: nfs-ifpb
+    shell: /usr/sbin/nologin
+
+- name: Configurar /etc/exports
+  copy:
+    dest: /etc/exports
+    content: "/dados/nfs 192.168.56.0/24(rw,sync,no_subtree_check,all_squash,anonuid={{ lookup('ansible.builtin.user', 'nfs-ifpb').uid }},anongid={{ lookup('ansible.builtin.user', 'nfs-ifpb').gid }})"
+  notify: restart nfs
+
+handlers:
+  - name: restart dhcp
+    service:
+      name: isc-dhcp-server
+      state: restarted
+
+  - name: restart nfs
+    service:
+      name: nfs-kernel-server
+      state: restarted
+
+  - name: apply netplan
+    command: netplan apply
+

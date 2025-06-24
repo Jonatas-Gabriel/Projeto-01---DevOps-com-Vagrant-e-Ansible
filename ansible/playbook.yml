@@ -1,0 +1,129 @@
+---
+- name: Configuração das VMs com Ansible
+  hosts: all
+  become: true
+
+  vars:
+    users:
+      - nome: jantony
+        chave: "{{ lookup('file', 'files/jantony.pub') }}"
+      - nome: jonatas
+        chave: "{{ lookup('file', 'files/jonatas.pub') }}"
+
+  tasks:
+    - name: Atualizar o sistema operacional
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalar o chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: Configurar NTP com pool.ntp.br
+      lineinfile:
+        path: /etc/chrony/chrony.conf
+        regexp: '^pool'
+        line: 'pool pool.ntp.br iburst'
+        state: present
+      notify: Restart chrony
+
+    - name: Ajustar zona de tempo para America/Recife
+      timezone:
+        name: America/Recife
+
+    - name: Criar grupo ifpb
+      group:
+        name: ifpb
+        state: present
+
+    - name: Criar usuários e adicionar ao grupo ifpb
+      loop: "{{ users }}"
+      loop_control:
+        loop_var: user
+      user:
+        name: "{{ user.nome }}"
+        groups: ifpb
+        append: yes
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Criar diretório .ssh
+      file:
+        path: "/home/{{ item.nome }}/.ssh"
+        state: directory
+        owner: "{{ item.nome }}"
+        group: "{{ item.nome }}"
+        mode: '0700'
+      loop: "{{ users }}"
+
+    - name: Adicionar chave pública dos usuários
+      copy:
+        content: "{{ item.chave }}"
+        dest: "/home/{{ item.nome }}/.ssh/authorized_keys"
+        owner: "{{ item.nome }}"
+        group: "{{ item.nome }}"
+        mode: '0600'
+      loop: "{{ users }}"
+
+    - name: Instalar o servidor SSH
+      apt:
+        name: openssh-server
+        state: present
+
+    - name: Configurar SSH para apenas chave pública
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+
+    - name: Bloquear acesso root via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+
+    - name: Permitir grupos ifpb e vagrant no SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AllowGroups'
+        line: 'AllowGroups vagrant ifpb'
+
+    - name: Adicionar banner de acesso
+      copy:
+        src: files/ssh_banner.txt
+        dest: /etc/issue.net
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ativar o banner no SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^Banner'
+        line: 'Banner /etc/issue.net'
+
+    - name: Reiniciar o serviço SSH
+      service:
+        name: ssh
+        state: restarted
+
+    - name: Instalar cliente NFS
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Permitir sudo para grupo ifpb
+      lineinfile:
+        dest: /etc/sudoers
+        regexp: '^%ifpb'
+        line: '%ifpb ALL=(ALL:ALL) ALL'
+        validate: 'visudo -cf %s'
+
+  handlers:
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
+

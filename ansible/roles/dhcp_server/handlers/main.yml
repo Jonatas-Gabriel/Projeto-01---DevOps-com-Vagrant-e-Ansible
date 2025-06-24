@@ -1,7 +1,0 @@
----
-# ansible/roles/dhcp_server/handlers/main.yml
-
-- name: Reiniciar dhcp
-  ansible.builtin.service:
-    name: isc-dhcp-server
-    state: restarted

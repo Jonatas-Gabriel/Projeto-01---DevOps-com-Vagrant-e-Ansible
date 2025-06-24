@@ -1,0 +1,40 @@
+- name: Instalar Firefox e Xauth
+  apt:
+    name:
+      - firefox-esr
+      - xauth
+    state: present
+
+- name: Habilitar exportação X11 no SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^X11Forwarding'
+    line: 'X11Forwarding yes'
+  notify: restart ssh
+
+- name: Garantir diretório de montagem NFS
+  file:
+    path: /var/nfs
+    state: directory
+
+- name: Instalar autofs
+  apt:
+    name: autofs
+    state: present
+
+- name: Configurar auto.master
+  copy:
+    dest: /etc/auto.master.d/nfs.autofs
+    content: "/var/nfs /etc/auto.nfs --timeout=60"
+
+- name: Configurar auto.nfs
+  copy:
+    dest: /etc/auto.nfs
+    content: "nfsdir -rw 192.168.56.10:/dados/nfs"
+
+- name: Reiniciar autofs
+  service:
+    name: autofs
+    state: restarted
+    enabled: yes
+

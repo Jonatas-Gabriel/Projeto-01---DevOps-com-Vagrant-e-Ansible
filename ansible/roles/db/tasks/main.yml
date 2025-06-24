@@ -1,0 +1,39 @@
+- name: Instalar MariaDB
+  apt:
+    name: mariadb-server
+    state: present
+
+- name: Garantir que o MariaDB esteja ativo
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+# AUTOMONTAGEM NFS
+
+- name: Instalar autofs
+  apt:
+    name: autofs
+    state: present
+
+- name: Criar diretório para montagem NFS
+  file:
+    path: /var/nfs
+    state: directory
+
+- name: Configurar auto.master
+  copy:
+    dest: /etc/auto.master.d/nfs.autofs
+    content: "/var/nfs /etc/auto.nfs --timeout=60"
+
+- name: Configurar auto.nfs
+  copy:
+    dest: /etc/auto.nfs
+    content: "nfsdir -rw 192.168.56.10:/dados/nfs"
+
+- name: Reiniciar autofs
+  service:
+    name: autofs
+    state: restarted
+    enabled: yes
+

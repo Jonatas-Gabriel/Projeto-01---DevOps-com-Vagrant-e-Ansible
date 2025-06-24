@@ -1,5 +1,0 @@
----
-# ansible/roles/nfs_server/handlers/main.yml
-
-- name: Exportar compartilhamentos NFS
-  ansible.builtin.command: exportfs -ra
